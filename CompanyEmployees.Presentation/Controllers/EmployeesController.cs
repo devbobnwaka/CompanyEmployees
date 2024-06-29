@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.JsonPatch;
+using Microsoft.AspNetCore.Mvc;
 using Service.Contracts;
 using Shared.DataTransferObjects;
 using System;
@@ -36,6 +37,8 @@ namespace CompanyEmployees.Presentation.Controllers
         {
             if (employee is null)
                 return BadRequest("EmployeeForCreationDto object is null");
+            if (!ModelState.IsValid)
+                return UnprocessableEntity(ModelState);
             var employeeToReturn = _service.EmployeeService.CreateEmployeeForCompany(companyId, employee, trackChanges: false);
             return CreatedAtRoute("GetEmployeeForCompany", new {companyId, id = employeeToReturn.Id}, employeeToReturn);
         }
@@ -53,8 +56,26 @@ namespace CompanyEmployees.Presentation.Controllers
             if (employee is null)
                 return BadRequest("EmployeeForUpdateDto object is null");
             _service.EmployeeService.UpdateEmployeeForCompany(companyId, id, employee,compTrackChanges: false, empTrackChanges: true);
+            if (!ModelState.IsValid)
+                return UnprocessableEntity(ModelState);
             return NoContent();
         }
 
+        [HttpPatch("{id:guid}")]
+        public IActionResult PartiallyUpdateEmployeeForCompany(Guid companyId, Guid id,[FromBody]JsonPatchDocument<EmployeeForUpdateDto> patchDoc)
+        {
+            if (patchDoc is null)
+                return BadRequest("patchDoc object sent from client is null.");
+            var result = _service.EmployeeService.GetEmployeeForPatch(companyId, id,
+            compTrackChanges: false,
+            empTrackChanges: true);
+            patchDoc.ApplyTo(result.employeeToPatch, ModelState);
+            TryValidateModel(result.employeeToPatch);
+            if (!ModelState.IsValid)
+                return UnprocessableEntity(ModelState);
+            _service.EmployeeService.SaveChangesForPatch(result.employeeToPatch,
+            result.employeeEntity);
+            return NoContent();
+        }
     }
 }
