@@ -2,10 +2,12 @@
 using Microsoft.AspNetCore.Mvc;
 using Service.Contracts;
 using Shared.DataTransferObjects;
+using Shared.RequestFeatures;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace CompanyEmployees.Presentation.Controllers
@@ -18,11 +20,27 @@ namespace CompanyEmployees.Presentation.Controllers
         public EmployeesController(IServiceManager service) => _service = service;
 
         [HttpGet]
-        public IActionResult GetEmployeesForCompany(Guid companyId)
+        public async Task<IActionResult> GetEmployeesForCompany(Guid companyId,[FromQuery] EmployeeParameters employeeParameters)
         {
-            var employees = _service.EmployeeService.GetEmployees(companyId, trackChanges: false);
-            return Ok(employees);
+            var pagedResult = await _service.EmployeeService.GetEmployees(companyId,
+            employeeParameters, trackChanges: false);
+            Response.Headers.Add("X-Pagination",JsonSerializer.Serialize(pagedResult.metaData));
+            return Ok(pagedResult.employees);
         }
+        //[HttpGet]
+        //public async Task<IActionResult> GetEmployeesForCompany(Guid companyId, [FromQuery] EmployeeParameters employeeParameters)
+        //{
+        //    var employees = await _service.EmployeeService.GetEmployees(companyId,
+        //    employeeParameters, trackChanges: false);
+        //    return Ok(employees);
+        //}
+
+        //[HttpGet]
+        //public IActionResult GetEmployeesForCompany(Guid companyId)
+        //{
+        //    var employees = _service.EmployeeService.GetEmployees(companyId, trackChanges: false);
+        //    return Ok(employees);
+        //}
 
         [HttpGet("{id:guid}", Name = "GetEmployeeForCompany")]
         public IActionResult GetEmployeeForCompany(Guid companyId, Guid id)
